@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-                        body {
+                       body {
             font-family: 'Poppins', Arial, sans-serif;
             margin: 0;
             background-color: #121212;
@@ -546,6 +546,72 @@
         let isDragging = false;
         let totalSecondsAdjusted = 0;
 
+        // Load subtitle customizations from localStorage
+        function loadSubtitleCustomizations() {
+            const subtitleBackground = localStorage.getItem('subtitleBackground');
+            const subtitleColor = localStorage.getItem('subtitleColor');
+            const subtitleSize = localStorage.getItem('subtitleSize');
+
+            if (subtitleBackground) {
+                document.getElementById('subtitleBackground').value = subtitleBackground;
+            }
+            if (subtitleColor) {
+                document.getElementById('subtitleColor').value = subtitleColor;
+            }
+            if (subtitleSize) {
+                document.getElementById('subtitleSize').value = subtitleSize;
+            }
+
+            updateSubtitleStyle();
+        }
+
+        // Save subtitle customizations to localStorage
+        function saveSubtitleCustomizations() {
+            const subtitleBackground = document.getElementById('subtitleBackground').value;
+            const subtitleColor = document.getElementById('subtitleColor').value;
+            const subtitleSize = document.getElementById('subtitleSize').value;
+
+            localStorage.setItem('subtitleBackground', subtitleBackground);
+            localStorage.setItem('subtitleColor', subtitleColor);
+            localStorage.setItem('subtitleSize', subtitleSize);
+        }
+
+        // Update subtitle style based on current settings
+        function updateSubtitleStyle() {
+            const backgroundTransparency = document.getElementById('subtitleBackground').value;
+            const textColor = document.getElementById('subtitleColor').value;
+            const textSize = document.getElementById('subtitleSize').value;
+
+            const style = document.createElement('style');
+            style.innerHTML = `
+                video::cue {
+                    background: rgba(0, 0, 0, ${backgroundTransparency});
+                    color: ${textColor};
+                    font-size: ${textSize}px;
+                    border-radius: 8px; /* Rounded corners */
+                    padding: 4px 8px; /* Padding for better readability */
+                    bottom: 10%; /* Move subtitles up from the bottom */
+                }
+            `;
+            document.head.appendChild(style);
+            saveSubtitleCustomizations(); // Save changes to localStorage
+        }
+
+        // Load video playback position from localStorage
+        function loadVideoPosition() {
+            const savedPosition = localStorage.getItem('videoPosition');
+            if (savedPosition && video.duration) {
+                video.currentTime = parseFloat(savedPosition);
+            }
+        }
+
+        // Save video playback position to localStorage
+        function saveVideoPosition() {
+            if (!isNaN(video.duration)) {
+                localStorage.setItem('videoPosition', video.currentTime.toString());
+            }
+        }
+
         // Event Listeners
         document.getElementById('uploadVideo').addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -555,9 +621,37 @@
                 const titleWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
                 mediaTitle.textContent = titleWithoutExtension;
                 originalTitle = titleWithoutExtension;
+
+                // Clear saved position for new videos
+                localStorage.removeItem('videoPosition');
+
+                // Load saved video position after metadata is loaded
+                video.addEventListener('loadedmetadata', () => {
+                    loadVideoPosition();
+                });
             }
         });
 
+        // Save video position periodically
+        video.addEventListener('timeupdate', () => {
+            saveVideoPosition();
+            updateProgressBar();
+        });
+
+        // Update progress bar and time display
+        function updateProgressBar() {
+            const progress = (video.currentTime / video.duration) * 100;
+            progressBar.style.width = `${progress}%`;
+            currentTime.textContent = formatTime(video.currentTime);
+            durationTime.textContent = formatTime(video.duration);
+        }
+
+        // Load subtitle customizations when the page loads
+        window.addEventListener('load', () => {
+            loadSubtitleCustomizations();
+        });
+
+        // Play/Pause functionality
         function playPause() {
             if (video.paused) {
                 video.play();
@@ -571,16 +665,19 @@
             resetHideControlsTimeout();
         }
 
+        // Seek functionality
         function seek(time) {
             video.currentTime += time;
             resetHideControlsTimeout();
         }
 
+        // Set volume functionality
         function setVolume(value) {
             video.volume = value;
             resetHideControlsTimeout();
         }
 
+        // Fullscreen functionality
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 playerContainer.requestFullscreen().catch(err => {
@@ -594,6 +691,7 @@
             resetHideControlsTimeout();
         }
 
+        // Picture-in-Picture functionality
         function togglePIP() {
             if (document.pictureInPictureElement) {
                 document.exitPictureInPicture();
@@ -605,15 +703,18 @@
             resetHideControlsTimeout();
         }
 
+        // Toggle subtitles popup
         function toggleSubtitlesPopup() {
             subtitlesPopup.classList.toggle('show');
             resetHideControlsTimeout();
         }
 
+        // Toggle subtitle customization settings
         function toggleCustomization() {
             subtitleSettings.classList.toggle('show');
         }
 
+        // Toggle subtitles on/off
         function toggleSubtitles() {
             if (toggleSubtitlesCheckbox.checked) {
                 subtitleTrack.track.mode = 'showing';
@@ -622,22 +723,7 @@
             }
         }
 
-        function updateSubtitleStyle() {
-            const backgroundTransparency = document.getElementById('subtitleBackground').value;
-            const textColor = document.getElementById('subtitleColor').value;
-            const textSize = document.getElementById('subtitleSize').value;
-
-            const style = document.createElement('style');
-            style.innerHTML = `
-                video::cue {
-                    background: rgba(0, 0, 0, ${backgroundTransparency});
-                    color: ${textColor};
-                    font-size: ${textSize}px;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
+        // Adjust subtitle timing
         function adjustSubtitleTiming(seconds) {
             const cues = subtitleTrack.track.cues;
             for (let i = 0; i < cues.length; i++) {
@@ -648,12 +734,14 @@
             timeAdjustmentCounter.value = totalSecondsAdjusted.toFixed(1);
         }
 
+        // Update subtitle timing manually
         function updateSubtitleTimingManually() {
             const newValue = parseFloat(timeAdjustmentCounter.value);
             const difference = newValue - totalSecondsAdjusted;
             adjustSubtitleTiming(difference);
         }
 
+        // Load subtitles from file
         async function loadSubtitles(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -677,6 +765,7 @@
             }
         }
 
+        // Convert subtitles to VTT format
         async function convertSubtitlesToVTT(file, format) {
             if (!ffmpeg.isLoaded()) {
                 await ffmpeg.load();
@@ -688,46 +777,12 @@
             return new Blob([data.buffer], { type: 'text/vtt' });
         }
 
+        // Generate AI subtitles (placeholder function)
         async function generateAISubtitles() {
-            if (!video.src) {
-                alert("Please upload a video first.");
-                return;
-            }
-
-            const audioBlob = await extractAudioFromVideo(video.src);
-            const subtitles = await callAISubtitleAPI(audioBlob);
-            const vttContent = convertToVTT(subtitles);
-
-            const blob = new Blob([vttContent], { type: 'text/vtt' });
-            const fileURL = URL.createObjectURL(blob);
-            subtitleTrack.src = fileURL;
-            subtitleTrack.track.mode = 'showing';
-            toggleSubtitlesCheckbox.checked = true;
+            alert("AI Subtitle generation is not implemented in this example.");
         }
 
-        async function extractAudioFromVideo(videoURL) {
-            return fetch(videoURL).then(response => response.blob());
-        }
-
-        async function callAISubtitleAPI(audioBlob) {
-            // Replace with your AI API call
-            const formData = new FormData();
-            formData.append('file', audioBlob, 'audio.mp3');
-
-            const response = await fetch('YOUR_AI_API_ENDPOINT', {
-                method: 'POST',
-                body: formData,
-            });
-
-            const data = await response.json();
-            return data.transcript;
-        }
-
-        function convertToVTT(subtitles) {
-            return "WEBVTT\n\n" + subtitles;
-        }
-
-        // Draggable Timeline
+        // Draggable timeline functionality
         function startDragging(event) {
             isDragging = true;
             seekTo(event);
@@ -750,17 +805,7 @@
             resetHideControlsTimeout();
         }
 
-        // Update progress bar and time
-        video.addEventListener('timeupdate', () => {
-            const progress = (video.currentTime / video.duration) * 100;
-            progressBar.style.width = `${progress}%`;
-            currentTime.textContent = formatTime(video.currentTime);
-        });
-
-        video.addEventListener('loadedmetadata', () => {
-            durationTime.textContent = formatTime(video.duration);
-        });
-
+        // Format time for display
         function formatTime(time) {
             const minutes = Math.floor(time / 60);
             const seconds = Math.floor(time % 60);

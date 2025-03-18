@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body {
+                body {
             font-family: 'Poppins', Arial, sans-serif;
             margin: 0;
             background-color: #121212;
@@ -412,6 +412,35 @@
             font-size: 16px; /* Default text size */
             text-shadow: 1px 1px 2px black;
         }
+
+        /* Scroll and Counter */
+        .scroll-counter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .scroll-counter button {
+            background: #333;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .scroll-counter button:hover {
+            background: #444;
+        }
+
+        .scroll-counter span {
+            font-size: 16px;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -469,8 +498,11 @@
                 <label for="subtitleSize">Text Size</label>
                 <input type="range" id="subtitleSize" min="12" max="32" step="1" value="16" oninput="updateSubtitleStyle()">
 
-                <button onclick="adjustSubtitleTiming(-1)">-1s</button>
-                <button onclick="adjustSubtitleTiming(1)">+1s</button>
+                <div class="scroll-counter">
+                    <button onclick="adjustSubtitleTiming(-1)">-1s</button>
+                    <span id="timeAdjustmentCounter">0s</span>
+                    <button onclick="adjustSubtitleTiming(1)">+1s</button>
+                </div>
             </div>
         </div>
     </div>
@@ -495,10 +527,12 @@
         const subtitleTrack = document.getElementById('subtitleTrack');
         const toggleSubtitlesCheckbox = document.getElementById('toggleSubtitles');
         const subtitleSettings = document.getElementById('subtitleSettings');
+        const timeAdjustmentCounter = document.getElementById('timeAdjustmentCounter');
 
         let hideControlsTimeout;
         let originalTitle = mediaTitle.textContent;
         let isDragging = false;
+        let totalSecondsAdjusted = 0;
 
         // Event Listeners
         document.getElementById('uploadVideo').addEventListener('change', function(event) {
@@ -598,6 +632,8 @@
                 cues[i].startTime += seconds;
                 cues[i].endTime += seconds;
             }
+            totalSecondsAdjusted += seconds;
+            timeAdjustmentCounter.textContent = `${totalSecondsAdjusted}s`;
         }
 
         async function loadSubtitles(event) {
